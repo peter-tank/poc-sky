@@ -1,0 +1,43 @@
+name: Build and Release poc-sky (NDK r22b)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Android NDK r22b
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r22b
+
+      - name: Verify toolchain
+        run: |
+          aarch64-linux-android21-clang --version
+          python3 --version
+
+      - name: Compile poc-sky for aarch64 Android 21
+        run: |
+          aarch64-linux-android21-clang src/poc-sky.c -static -O2 -o poc-sky
+          python3 patch_tls.py poc-sky
+
+      - name: Package artifacts
+        run: |
+          tar -czvf poc-sky-aarch64-android21.tar.gz poc-sky README.md tools/fix-home.sh
+          ls -lh
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: poc-sky-aarch64-android21.tar.gz
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
