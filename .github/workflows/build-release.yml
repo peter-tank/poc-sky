@@ -15,15 +15,28 @@ jobs:
 
       - name: Setup Android NDK r22b
         uses: nttld/setup-ndk@v1
+        id: setup-ndk
         with:
           ndk-version: r22b
+          add-to-path: false
 
-      - name: Verify toolchain
+      - name: Add NDK toolchain to PATH
         run: |
-          aarch64-linux-android21-clang --version
-          python3 --version
+          NDK_BIN="${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          echo "$NDK_BIN" >> $GITHUB_PATH
+          echo "NDK toolchain: $NDK_BIN"
 
-      - name: Compile poc-sky for aarch64 Android 21
+      - name: Verify compiler availability
+        run: |
+          which aarch64-linux-android21-clang
+          aarch64-linux-android21-clang --version | head -n 3
+
+      - name: Install Python dependencies for patch_tls.py
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install pycryptodome
+
+      - name: Compile and patch poc-sky
         run: |
           aarch64-linux-android21-clang src/poc-sky.c -static -O2 -o poc-sky
           python3 patch_tls.py poc-sky
